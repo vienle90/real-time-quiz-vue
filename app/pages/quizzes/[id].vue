@@ -75,6 +75,20 @@ function updateScore(score) {
   quizUser.value.score += score;
 }
 
+// Get difficulty color
+const difficultyColor = computed(() => {
+  if (!quiz.value.difficulty) return 'primary';
+  
+  return quiz.value.difficulty.color || 'primary';
+});
+
+// Get difficulty label
+const difficultyLabel = computed(() => {
+  if (!quiz.value.difficulty) return 'Medium';
+  
+  return quiz.value.difficulty.label || 'Medium';
+});
+
 // Random color for the quiz background
 const quizBgGradient = computed(() => {
   const gradients = [
@@ -126,6 +140,17 @@ onMounted(() => {
           <div v-if="showContent" class="quiz-header-content text-white">
             <v-row align="center">
               <v-col cols="12" md="8">
+                <div class="d-flex align-center mb-3">
+                  <v-chip
+                    size="large"
+                    :color="difficultyColor"
+                    class="font-weight-medium text-uppercase"
+                    variant="elevated"
+                  >
+                    {{ difficultyLabel }}
+                  </v-chip>
+                </div>
+              
                 <h1 class="text-h3 font-weight-bold mb-2">{{ quiz.title }}</h1>
                 <p class="text-h6 mb-6 text-medium-emphasis text-white">{{ quiz.description }}</p>
                 

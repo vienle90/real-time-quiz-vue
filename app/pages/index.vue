@@ -6,7 +6,7 @@ import QuizCard from '~/components/QuizCard.vue';
 const quizzes = ref([]);
 const isLoading = ref(true);
 const difficultyLevels = ref([]);
-const selectedDifficulty = ref(null);
+const selectedDifficulty = ref('all'); // Default to 'all' instead of null
 
 // Get all quizzes
 async function fetchQuizzes() {
@@ -14,7 +14,8 @@ async function fetchQuizzes() {
   try {
     let url = import.meta.env.VITE_API_URL + '/api/quizzes';
     
-    if (selectedDifficulty.value) {
+    // Only add difficulty param if it's not 'all'
+    if (selectedDifficulty.value && selectedDifficulty.value !== 'all') {
       url += `?difficulty=${selectedDifficulty.value}`;
     }
     
@@ -39,7 +40,7 @@ async function fetchDifficultyLevels() {
 
 // Reset difficulty filter
 function resetFilter() {
-  selectedDifficulty.value = null;
+  selectedDifficulty.value = 'all'; // Set to 'all' instead of null
   fetchQuizzes();
 }
 
@@ -99,7 +100,7 @@ onMounted(() => {
             ></v-select>
             
             <v-btn
-              v-if="selectedDifficulty"
+              v-if="selectedDifficulty && selectedDifficulty !== 'all'"
               icon="mdi-close"
               variant="text"
               size="small"
@@ -151,14 +152,14 @@ onMounted(() => {
         <h3 class="text-h5 font-weight-bold mb-2">No Quizzes Found</h3>
         
         <p class="text-body-1 text-medium-emphasis mb-4">
-          {{ selectedDifficulty 
+          {{ selectedDifficulty && selectedDifficulty !== 'all'
             ? `There are no quizzes with ${selectedDifficulty} difficulty.` 
             : 'There are no quizzes available at the moment.' 
           }}
         </p>
         
         <v-btn
-          v-if="selectedDifficulty"
+          v-if="selectedDifficulty && selectedDifficulty !== 'all'"
           color="primary"
           variant="outlined"
           prepend-icon="mdi-refresh"

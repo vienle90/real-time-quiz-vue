@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import QuizCard from '~/components/QuizCard.vue';
+import FeaturedQuizzes from '~/components/FeaturedQuizzes.vue';
 
 const quizzes = ref([]);
 const isLoading = ref(true);
@@ -58,10 +59,16 @@ onMounted(() => {
 <template>
   <div>
     <v-container>
-      <!-- Page Header -->
+      <!-- Featured Quizzes Section -->
+      <featured-quizzes />
+      
+      <!-- Divider between sections -->
+      <v-divider class="my-8"></v-divider>
+      
+      <!-- All Quizzes Section -->
       <v-row class="mt-8 mb-6">
         <v-col cols="12" md="8">
-          <h1 class="text-h3 font-weight-bold mb-2">Available Quizzes</h1>
+          <h1 class="text-h3 font-weight-bold mb-2">All Quizzes</h1>
           <p class="text-subtitle-1 text-medium-emphasis">
             Choose a quiz from the list below to test your knowledge.
           </p>

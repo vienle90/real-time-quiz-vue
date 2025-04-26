@@ -5,6 +5,7 @@ import QuizLeaderboard from "~/components/QuizLeaderboard.vue";
 import QuizQuestion from "~/components/QuizQuestion.vue";
 
 const route = useRoute();
+const router = useRouter();
 
 const quiz = ref({});
 const quizUser = ref({});
@@ -13,6 +14,8 @@ const username = ref('');
 const quizId = route.params.id;
 const currentUser = ref({});
 const isLoading = ref(true);
+const errorDialog = ref(false);
+const errorMessage = ref('');
 
 // For animation
 const showContent = ref(false);
@@ -23,6 +26,7 @@ const usernameRules = [
   v => (v && v.length >= 3) || 'Username must be at least 3 characters',
 ];
 const formValid = ref(false);
+const isSubmitting = ref(false);
 
 // Get quiz details
 function fetchQuizDetails() {
@@ -40,26 +44,50 @@ function fetchQuizDetails() {
 }
 
 function createUser() {
-  if (!formValid.value) return;
+  if (!formValid.value || isSubmitting.value) return;
+  
+  isSubmitting.value = true;
   
   const createUserUrl = import.meta.env.VITE_API_URL + '/api/users';
-  axios.post(createUserUrl, {username: username.value}).then((response) => {
-    localStorage.user = JSON.stringify(response.data);
-    currentUser.value = response.data;
-    joinQuiz();
-    dialog.value = false;
-  }).catch((error) => {
-    console.error('Error creating user:', error);
-  });
+  axios.post(createUserUrl, {username: username.value})
+    .then((response) => {
+      localStorage.user = JSON.stringify(response.data);
+      currentUser.value = response.data;
+      joinQuiz();
+      dialog.value = false;
+    })
+    .catch((error) => {
+      console.error('Error creating user:', error);
+      errorMessage.value = error.response?.data?.message || 'Failed to create user. Please try again.';
+      errorDialog.value = true;
+    })
+    .finally(() => {
+      isSubmitting.value = false;
+    });
 }
 
 function joinQuiz() {
   const joinQuizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId + '/users';
-  axios.post(joinQuizUrl, {user_id: currentUser.value.id}).then((response) => {
-    quizUser.value = response.data;
-  }).catch((error) => {
-    console.error('Error joining quiz:', error);
-  });
+  axios.post(joinQuizUrl, {user_id: currentUser.value.id})
+    .then((response) => {
+      quizUser.value = response.data;
+    })
+    .catch((error) => {
+      console.error('Error joining quiz:', error);
+      // Check if it's a 400 error
+      if (error.response && error.response.status === 404) {
+        // Extract error message or use a default
+        errorMessage.value = error.response.data.message || 'User not found. Please try again.';
+        // Show error dialog
+        errorDialog.value = true;
+      }
+    });
+}
+
+function closeErrorDialog() {
+  errorDialog.value = false;
+  // Redirect to the homepage
+  router.push('/');
 }
 
 function getQuizUser() {
@@ -253,14 +281,47 @@ onMounted(() => {
               block 
               color="primary" 
               size="large"
-              :disabled="!formValid"
-              @click="createUser"
+              :loading="isSubmitting"
+              :disabled="!formValid || isSubmitting"
             >
               <v-icon start icon="mdi-login"></v-icon>
-              Join Quiz
+              {{ isSubmitting ? 'Joining...' : 'Join Quiz' }}
             </v-btn>
           </v-form>
         </v-card-text>
+      </v-card>
+    </v-dialog>
+    
+    <!-- Error Dialog -->
+    <v-dialog
+      v-model="errorDialog"
+      max-width="400"
+      persistent
+    >
+      <v-card class="rounded-lg">
+        <v-card-item class="bg-error text-white">
+          <template v-slot:prepend>
+            <v-avatar color="white" class="text-error">
+              <v-icon>mdi-alert-circle</v-icon>
+            </v-avatar>
+          </template>
+          <v-card-title>Error</v-card-title>
+        </v-card-item>
+        
+        <v-card-text class="pt-4 text-body-1">
+          {{ errorMessage }}
+        </v-card-text>
+        
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="primary"
+            variant="tonal"
+            @click="closeErrorDialog"
+          >
+            OK
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </div>

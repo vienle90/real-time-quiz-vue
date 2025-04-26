@@ -19,8 +19,10 @@ const scrollToQuizzes = () => {
     class="px-3"
   >
     <v-app-bar-title class="text-h5 font-weight-bold">
-      <v-icon icon="mdi-help-box" size="large" class="me-2" />
-      {{ appTitle }}
+      <router-link to="/" class="d-flex align-center text-decoration-none text-white">
+        <v-icon icon="mdi-help-box" size="large" class="me-2" />
+        {{ appTitle }}
+      </router-link>
     </v-app-bar-title>
 
     <v-spacer></v-spacer>

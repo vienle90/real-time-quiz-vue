@@ -46,7 +46,8 @@ watch(() => props.reset, (newVal) => {
 onMounted(async () => {
   try {
     console.log('Fetching categories...');
-    const response = await axios.get('http://localhost:8000/api/categories');
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const response = await axios.get(`${apiUrl}/api/categories`);
     console.log('Categories data:', response.data);
     categories.value = response.data;
   } catch (error) {

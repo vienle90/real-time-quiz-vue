@@ -49,8 +49,6 @@ async function fetchQuizzes() {
 async function fetchDifficultyLevels() {
   try {
     const response = await axios.get(import.meta.env.VITE_API_URL + '/api/quiz-difficulty-levels');
-    // Remove the "all" option from the difficulty levels
-    difficultyLevels.value = response.data.filter(level => level.value !== 'all');
   } catch (error) {
     console.error('Error fetching difficulty levels:', error);
   }

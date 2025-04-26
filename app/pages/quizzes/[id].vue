@@ -172,10 +172,21 @@ onMounted(() => {
                   <v-chip
                     size="large"
                     :color="difficultyColor"
-                    class="font-weight-medium text-uppercase"
+                    class="font-weight-medium text-uppercase me-2"
                     variant="elevated"
                   >
                     {{ difficultyLabel }}
+                  </v-chip>
+                  
+                  <!-- Display quiz category -->
+                  <v-chip
+                    v-if="quiz.category"
+                    size="large"
+                    color="white"
+                    class="font-weight-medium"
+                    variant="elevated"
+                  >
+                    <span class="text-primary">{{ quiz.category.name }}</span>
                   </v-chip>
                 </div>
               

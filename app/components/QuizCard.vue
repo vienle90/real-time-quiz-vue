@@ -16,13 +16,26 @@ defineProps({
     rounded="lg"
   >
     <v-card-item class="pb-0">
-      <v-chip
-        :color="quiz.difficulty?.color || 'primary'"
-        size="small"
-        class="font-weight-medium text-uppercase"
-      >
-        {{ quiz.difficulty?.label || 'Medium' }}
-      </v-chip>
+      <div class="d-flex align-center">
+        <v-chip
+          :color="quiz.difficulty?.color || 'primary'"
+          size="small"
+          class="font-weight-medium text-uppercase me-2"
+        >
+          {{ quiz.difficulty?.label || 'Medium' }}
+        </v-chip>
+        
+        <!-- Display quiz category -->
+        <v-chip
+          v-if="quiz.category"
+          size="small"
+          color="primary"
+          variant="outlined"
+          class="font-weight-medium"
+        >
+          {{ quiz.category.name }}
+        </v-chip>
+      </div>
     </v-card-item>
     
     <v-card-item>

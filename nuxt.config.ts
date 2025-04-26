@@ -28,6 +28,12 @@ export default defineNuxtConfig({
   css: [],
   modules: ['@nuxt/fonts', 'vuetify-nuxt-module', '@nuxt/eslint'],
 
+  runtimeConfig: {
+    public: {
+      apiBaseUrl: process.env.VITE_API_URL || 'http://localhost:8000'
+    }
+  },
+
   vuetify: {
     moduleOptions: {
       // check https://nuxt.vuetifyjs.com/guide/server-side-rendering.html

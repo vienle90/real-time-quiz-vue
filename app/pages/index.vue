@@ -3,23 +3,39 @@ import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import QuizCard from '~/components/QuizCard.vue';
 import FeaturedQuizzes from '~/components/FeaturedQuizzes.vue';
+import CategoryFilter from '~/components/CategoryFilter.vue';
 
 const quizzes = ref([]);
 const isLoading = ref(true);
 const difficultyLevels = ref([]);
-const selectedDifficulty = ref('all'); // Default to 'all' instead of null
+const selectedDifficulty = ref(null);
+const selectedCategoryId = ref(null);
+const resetCategoryFilter = ref(false);
 
 // Get all quizzes
 async function fetchQuizzes() {
   isLoading.value = true;
   try {
-    let url = import.meta.env.VITE_API_URL + '/api/quizzes';
+    // Build query parameters
+    const params = new URLSearchParams();
     
-    // Only add difficulty param if it's not 'all'
-    if (selectedDifficulty.value && selectedDifficulty.value !== 'all') {
-      url += `?difficulty=${selectedDifficulty.value}`;
+    // Only add difficulty param if selected
+    if (selectedDifficulty.value) {
+      params.append('difficulty', selectedDifficulty.value);
     }
     
+    // Add category filter if present
+    if (selectedCategoryId.value) {
+      params.append('category_id', selectedCategoryId.value.id);
+    }
+    
+    // Construct URL
+    const queryString = params.toString();
+    const url = queryString 
+      ? `${import.meta.env.VITE_API_URL}/api/quizzes?${queryString}`
+      : `${import.meta.env.VITE_API_URL}/api/quizzes`;
+    
+    console.log('Fetching quizzes from:', url);
     const response = await axios.get(url);
     quizzes.value = response.data;
   } catch (error) {
@@ -33,15 +49,32 @@ async function fetchQuizzes() {
 async function fetchDifficultyLevels() {
   try {
     const response = await axios.get(import.meta.env.VITE_API_URL + '/api/quiz-difficulty-levels');
-    difficultyLevels.value = response.data;
   } catch (error) {
     console.error('Error fetching difficulty levels:', error);
   }
 }
 
-// Reset difficulty filter
-function resetFilter() {
-  selectedDifficulty.value = 'all'; // Set to 'all' instead of null
+// Reset all filters
+function resetFilters() {
+  selectedDifficulty.value = null;
+  selectedCategoryId.value = null;
+  
+  // Force reset of the category filter component
+  localStorage.removeItem('selectedCategory');
+  resetCategoryFilter.value = true;
+  
+  // Reset the flag after a short delay to allow for future resets
+  setTimeout(() => {
+    resetCategoryFilter.value = false;
+  }, 100);
+  
+  fetchQuizzes();
+}
+
+// Handle category filter change
+function onCategoryChange(category) {
+  console.log('Category changed to:', category);
+  selectedCategoryId.value = category;
   fetchQuizzes();
 }
 
@@ -66,26 +99,44 @@ onMounted(() => {
       <v-divider class="my-8"></v-divider>
       
       <!-- All Quizzes Section -->
-      <v-row class="mt-8 mb-6">
-        <v-col cols="12" md="8">
+      <v-row class="mt-8 mb-4">
+        <v-col cols="12">
           <h1 class="text-h3 font-weight-bold mb-2">All Quizzes</h1>
           <p class="text-subtitle-1 text-medium-emphasis">
             Choose a quiz from the list below to test your knowledge.
           </p>
         </v-col>
+      </v-row>
+      
+      <!-- Filters Section -->
+      <div class="filters-container mb-6">
+        <!-- Filter Labels -->
+        <div class="filter-labels d-flex mb-1">
+          <div class="filter-label flex-1">Filter by Category</div>
+          <div class="filter-label flex-1">Filter by Difficulty</div>
+        </div>
         
-        <!-- Difficulty Filter -->
-        <v-col cols="12" md="4" class="d-flex align-center justify-end">
-          <div class="d-flex align-center">
+        <!-- Filter Controls -->
+        <div class="d-flex align-center gap-4">
+          <!-- Category Filter -->
+          <div class="flex-1">
+            <category-filter 
+              @filter-change="onCategoryChange" 
+              :reset="resetCategoryFilter"
+              :key="resetCategoryFilter"
+            />
+          </div>
+          
+          <!-- Difficulty Filter -->
+          <div class="flex-1">
             <v-select
               v-model="selectedDifficulty"
               :items="difficultyLevels"
               item-title="label"
               item-value="value"
-              label="Filter by Difficulty"
               variant="outlined"
               density="comfortable"
-              class="me-2"
+              clearable
               hide-details
               :item-props="item => ({
                 prependAvatar: undefined,
@@ -104,20 +155,16 @@ onMounted(() => {
                   }
                 }
               })"
-            ></v-select>
-            
-            <v-btn
-              v-if="selectedDifficulty && selectedDifficulty !== 'all'"
-              icon="mdi-close"
-              variant="text"
-              size="small"
-              @click="resetFilter"
-              class="ml-1"
-              color="default"
-            ></v-btn>
+            >
+              <template v-slot:prepend-inner>
+                <v-icon icon="mdi-filter-variant" class="mr-2" />
+              </template>
+            </v-select>
           </div>
-        </v-col>
-      </v-row>
+        </div>
+        
+        <!-- Removed the top "Clear Filters" button as requested -->
+      </div>
 
       <!-- Loading State -->
       <div v-if="isLoading" class="d-flex justify-center align-center py-12">
@@ -159,22 +206,51 @@ onMounted(() => {
         <h3 class="text-h5 font-weight-bold mb-2">No Quizzes Found</h3>
         
         <p class="text-body-1 text-medium-emphasis mb-4">
-          {{ selectedDifficulty && selectedDifficulty !== 'all'
-            ? `There are no quizzes with ${selectedDifficulty} difficulty.` 
-            : 'There are no quizzes available at the moment.' 
-          }}
+          No quizzes match your selected filters.
         </p>
         
+        <!-- Updated Clear Filters button to match the UI -->
         <v-btn
-          v-if="selectedDifficulty && selectedDifficulty !== 'all'"
           color="primary"
-          variant="outlined"
-          prepend-icon="mdi-refresh"
-          @click="resetFilter"
+          variant="tonal"
+          @click="resetFilters"
+          class="clear-filters-btn"
         >
-          Clear Filter
+          <v-icon left class="mr-2">mdi-refresh</v-icon>
+          CLEAR FILTERS
         </v-btn>
       </v-card>
     </v-container>
   </div>
 </template>
+
+<style scoped>
+.filters-container {
+  width: 100%;
+}
+
+.filter-label {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.6);
+  padding-left: 12px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.gap-4 {
+  gap: 16px;
+}
+
+.clear-filters-btn {
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Remove margin-bottom from CategoryFilter */
+:deep(.category-filter) {
+  margin-bottom: 0 !important;
+}
+</style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
-import axios from 'axios';
+import { categoryService } from '~/services';
 import type { Category } from '~/types';
 
 interface Props {
@@ -15,7 +15,7 @@ const selectedCategory = ref<Category | null>(null);
 const categories = ref<Category[]>([]);
 
 const emit = defineEmits<{
-  (e: 'filter-change', category: Category | null): void;
+  (event: 'filter-change', category: Category | null): void;
 }>();
 
 // Watch for reset prop changes to clear the filter
@@ -29,12 +29,10 @@ watch(() => props.reset, (newVal) => {
 onMounted(async () => {
   try {
     console.log('Fetching categories...');
-    const apiUrl = import.meta.env.VITE_API_URL;
-    const response = await axios.get<Category[]>(`${apiUrl}/api/categories`);
-    console.log('Categories data:', response.data);
-    categories.value = response.data;
-  } catch (error) {
-    console.error('Failed to fetch categories:', error);
+    categories.value = await categoryService.getCategories();
+    console.log('Categories data:', categories.value);
+  } catch (err) {
+    console.error('Failed to fetch categories:', err);
   }
 });
 
@@ -44,7 +42,8 @@ onMounted(() => {
   if (savedCategory) {
     try {
       selectedCategory.value = JSON.parse(savedCategory);
-    } catch (e) {
+    } catch {
+      // If parsing fails, remove invalid data from localStorage
       localStorage.removeItem('selectedCategory');
     }
   }

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import axios from 'axios';
+import {computed, onMounted, ref} from 'vue';
 import QuizLeaderboard from "~/components/QuizLeaderboard.vue";
 import QuizQuestion from "~/components/QuizQuestion.vue";
-import type { Quiz, QuizUser, User } from '~/types';
+import {quizService, userService} from '~/services';
+import type {Quiz, QuizUser, User} from '~/types';
 
 const route = useRoute();
 const router = useRouter();
@@ -32,57 +32,55 @@ const isSubmitting = ref<boolean>(false);
 
 // fetchQuizDetails is now defined below
 
-function createUser(): void {
+async function createUser(): Promise<void> {
   if (!formValid.value || isSubmitting.value) return;
   
   isSubmitting.value = true;
   
-  const createUserUrl = `${import.meta.env.VITE_API_URL}/api/users`;
-  axios.post<User>(createUserUrl, {username: username.value})
-    .then((response) => {
-      localStorage.user = JSON.stringify(response.data);
-      currentUser.value = response.data;
-      
-      // Only join quiz if quizId is available
-      if (quizId.value) {
-        joinQuiz();
-      }
-      
-      dialog.value = false;
-    })
-    .catch((error) => {
-      console.error('Error creating user:', error);
-      errorMessage.value = error.response?.data?.message || 'Failed to create user. Please try again.';
-      errorDialog.value = true;
-    })
-    .finally(() => {
-      isSubmitting.value = false;
-    });
+  try {
+    const user = await userService.createUser(username.value);
+    
+    localStorage.user = JSON.stringify(user);
+    currentUser.value = user;
+    
+    // Only join quiz if quizId is available
+    if (quizId.value) {
+      await joinQuiz();
+    }
+    
+    dialog.value = false;
+  } catch (error) {
+    console.error('Error creating user:', error);
+    const errorResponse = error as { response?: { data?: { message?: string } } };
+    errorMessage.value = errorResponse.response?.data?.message || 'Failed to create user. Please try again.';
+    errorDialog.value = true;
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
-function joinQuiz(): void {
+async function joinQuiz(): Promise<void> {
   // Check if quizId is available
   if (!quizId.value) {
     console.error('Cannot join quiz: quizId is not available');
     return;
   }
   
-  // Use quizId.value instead of quizSlug for joining quiz
-  const joinQuizUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${quizId.value}/users`;
-  axios.post<QuizUser>(joinQuizUrl, {user_id: currentUser.value.id})
-    .then((response) => {
-      quizUser.value = response.data;
-    })
-    .catch((error) => {
-      console.error('Error joining quiz:', error);
-      // Check if it's a 404 error
-      if (error.response && error.response.status === 404) {
-        // Extract error message or use a default
-        errorMessage.value = error.response.data.message || 'User not found. Please try again.';
-        // Show error dialog
-        errorDialog.value = true;
-      }
-    });
+  try {
+    if (currentUser.value.id) {
+      quizUser.value = await userService.joinQuiz(quizId.value, currentUser.value.id);
+    }
+  } catch (error) {
+    console.error('Error joining quiz:', error);
+    // Check if it's a 404 error
+    const errorResponse = error as { response?: { status?: number, data?: { message?: string } } };
+    if (errorResponse.response && errorResponse.response.status === 404) {
+      // Extract error message or use a default
+      errorMessage.value = errorResponse.response.data?.message || 'User not found. Please try again.';
+      // Show error dialog
+      errorDialog.value = true;
+    }
+  }
 }
 
 function closeErrorDialog(): void {
@@ -91,20 +89,22 @@ function closeErrorDialog(): void {
   router.push('/');
 }
 
-function getQuizUser(): void {
+async function getQuizUser(): Promise<void> {
   // Check if quizId is available
   if (!quizId.value) {
     console.error('Cannot get quiz user: quizId is not available');
     return;
   }
   
-  // Use quizId.value instead of quizSlug for getting quiz user
-  const getQuizUserUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${quizId.value}/users/${currentUser.value.id}`;
-  axios.get<QuizUser>(getQuizUserUrl).then((response) => {
-    quizUser.value = response.data;
-  }).catch(() => {
-    joinQuiz();
-  });
+  try {
+    if (currentUser.value.id) {
+      quizUser.value = await userService.getQuizUser(quizId.value, currentUser.value.id);
+    }
+  } catch (error) {
+    console.error('Error getting quiz user:', error);
+    // If user is not found for this quiz, try to join the quiz
+    await joinQuiz();
+  }
 }
 
 function updateScore(score: number): void {
@@ -161,25 +161,23 @@ onMounted(() => {
 });
 
 // Update fetchQuizDetails to return a promise so we can chain operations after it
-function fetchQuizDetails(): Promise<any> {
-  // Updated to use slug-based endpoint
-  const quizUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${quizSlug}`;
-  
-  return axios.get<Quiz>(quizUrl)
-    .then((response) => {
-      quiz.value = response.data;
-      quizId.value = response.data.id; // Store the numeric ID for child components
-      setTimeout(() => {
-        showContent.value = true;
-        isLoading.value = false;
-      }, 300);
-      return response; // Return response for chaining
-    })
-    .catch((error) => {
-      console.error('Error fetching quiz details:', error);
+async function fetchQuizDetails(): Promise<Quiz> {
+  try {
+    const quizData = await quizService.getQuizBySlug(quizSlug);
+    quiz.value = quizData;
+    quizId.value = quizData.id; // Store the numeric ID for child components
+    
+    setTimeout(() => {
+      showContent.value = true;
       isLoading.value = false;
-      throw error; // Rethrow for proper promise chaining
-    });
+    }, 300);
+    
+    return quizData; // Return quiz data for chaining
+  } catch (error) {
+    console.error('Error fetching quiz details:', error);
+    isLoading.value = false;
+    throw error; // Rethrow for proper promise chaining
+  }
 }
 </script>
 

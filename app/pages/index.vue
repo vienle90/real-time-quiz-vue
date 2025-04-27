@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, h } from 'vue';
-import axios from 'axios';
+import { ref, onMounted, watch } from 'vue';
 import QuizCard from '~/components/QuizCard.vue';
 import FeaturedQuizzes from '~/components/FeaturedQuizzes.vue';
 import CategoryFilter from '~/components/CategoryFilter.vue';
+import { quizService, type DifficultyLevel } from '~/services';
 import type { Quiz, Category } from '~/types';
-
-interface DifficultyLevel {
-  label: string;
-  value: string;
-  color: string;
-}
 
 const quizzes = ref<Quiz[]>([]);
 const isLoading = ref<boolean>(true);
@@ -23,28 +17,23 @@ const resetCategoryFilter = ref<boolean>(false);
 async function fetchQuizzes(): Promise<void> {
   isLoading.value = true;
   try {
-    // Build query parameters
-    const params = new URLSearchParams();
+    const params: {
+      difficulty?: string;
+      category_id?: string;
+    } = {};
     
     // Only add difficulty param if selected
     if (selectedDifficulty.value) {
-      params.append('difficulty', selectedDifficulty.value);
+      params.difficulty = selectedDifficulty.value;
     }
     
     // Add category filter if present
     if (selectedCategoryId.value) {
-      params.append('category_id', selectedCategoryId.value.id.toString());
+      params.category_id = selectedCategoryId.value.id.toString();
     }
     
-    // Construct URL
-    const queryString = params.toString();
-    const url = queryString 
-      ? `${import.meta.env.VITE_API_URL}/api/quizzes?${queryString}`
-      : `${import.meta.env.VITE_API_URL}/api/quizzes`;
-    
-    console.log('Fetching quizzes from:', url);
-    const response = await axios.get<Quiz[]>(url);
-    quizzes.value = response.data;
+    console.log('Fetching quizzes with params:', params);
+    quizzes.value = await quizService.getQuizzes(params);
   } catch (error) {
     console.error('Error fetching quizzes:', error);
   } finally {
@@ -55,8 +44,7 @@ async function fetchQuizzes(): Promise<void> {
 // Get difficulty levels for filtering
 async function fetchDifficultyLevels(): Promise<void> {
   try {
-    const response = await axios.get<DifficultyLevel[]>(`${import.meta.env.VITE_API_URL}/api/quiz-difficulty-levels`);
-    difficultyLevels.value = response.data;
+    difficultyLevels.value = await quizService.getDifficultyLevels();
   } catch (error) {
     console.error('Error fetching difficulty levels:', error);
   }

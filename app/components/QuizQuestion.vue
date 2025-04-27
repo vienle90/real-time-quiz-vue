@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import axios from 'axios';
-import type { AxiosResponse } from 'axios';
 import QuestionStatusIndicator from './QuestionStatusIndicator.vue';
+import { questionService } from '~/services';
 import type { Question, QuestionResult } from '~/types';
 
 interface Props {
@@ -13,28 +12,16 @@ interface Props {
 const props = defineProps<Props>();
 
 const questions = ref<Question[]>([]);
-const answers = ref<Record<string, any>>({});
 const result = ref<QuestionResult>({});
 const isLoading = ref<boolean>(true);
 const currentQuestionIndex = ref<number>(0);
 
-interface SubmitAnswerResponse {
-  choice_id: number;
-  is_correct: boolean;
-  score: number;
-}
-
 const emit = defineEmits<{
-  (e: 'scoreChanged', score: number): void;
+  (event: 'scoreChanged', score: number): void;
 }>();
 
 // For animation
 const questionTransition = ref<boolean>(true);
-
-// Get the current question
-const currentQuestion = computed((): Question | null => {
-  return questions.value[currentQuestionIndex.value] || null;
-});
 
 // Calculate progress percentage
 const progressPercentage = computed((): number => {
@@ -64,19 +51,21 @@ const correctCount = computed((): number => {
 });
 
 // Submit answer for a question
-function submitAnswers(questionId: number | string, choiceId: number): void {
+async function submitAnswers(questionId: number | string, choiceId: number): Promise<void> {
   if (result.value[questionId] !== undefined) {
     return;
   }
   
-  const submitAnswersUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${props.quizId}/questions/${questionId}/answers`;
-  
-  axios.post<SubmitAnswerResponse>(submitAnswersUrl, {
-    choice_id: choiceId,
-    user_id: props.userId
-  }).then((response: AxiosResponse<SubmitAnswerResponse>) => {
-    const responseChoiceId = response.data.choice_id;
-    const isCorrect = response.data.is_correct;
+  try {
+    const response = await questionService.submitAnswer(
+      props.quizId,
+      questionId,
+      props.userId,
+      choiceId
+    );
+    
+    const responseChoiceId = response.choice_id;
+    const isCorrect = response.is_correct;
     
     // Update results
     result.value[questionId] = {
@@ -85,7 +74,7 @@ function submitAnswers(questionId: number | string, choiceId: number): void {
     };
     
     // Emit score change
-    emit('scoreChanged', response.data.score);
+    emit('scoreChanged', response.score);
     
     // Auto advance to next question after a short delay
     setTimeout(() => {
@@ -93,9 +82,9 @@ function submitAnswers(questionId: number | string, choiceId: number): void {
         goToNextQuestion();
       }
     }, 1500);
-  }).catch((error) => {
+  } catch (error) {
     console.error('Error submitting answer:', error);
-  });
+  }
 }
 
 // Navigation functions
@@ -146,9 +135,7 @@ function getChoiceClass(questionId: number | string, choiceId: number): string {
 // Load questions from API
 onMounted(async (): Promise<void> => {
   try {
-    const getQuestionUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${props.quizId}/questions`;
-    const response = await axios.get<Question[]>(getQuestionUrl);
-    questions.value = response.data;
+    questions.value = await questionService.getQuizQuestions(props.quizId);
     
     // Load saved results from localStorage
     const resultKey = `result.${props.quizId}user.${props.userId}`;

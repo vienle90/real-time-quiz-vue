@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import { quizService } from '~/services';
 import QuizCard from '~/components/QuizCard.vue';
 import type { Quiz } from '~/types';
 
@@ -14,8 +14,7 @@ async function fetchFeaturedQuizzes(): Promise<void> {
   error.value = null;
   
   try {
-    const response = await axios.get<Quiz[]>(`${import.meta.env.VITE_API_URL}/api/quizzes/featured`);
-    featuredQuizzes.value = response.data;
+    featuredQuizzes.value = await quizService.getFeaturedQuizzes();
   } catch (err) {
     console.error('Error fetching featured quizzes:', err);
     error.value = 'Failed to load featured quizzes';
@@ -68,7 +67,6 @@ onMounted(() => {
       <v-slide-group-item
         v-for="quiz in featuredQuizzes"
         :key="quiz.id"
-        v-slot="{ isSelected, toggle, selectedClass }"
       >
         <div class="ma-2" style="width: 340px;">
           <!-- Add a featured badge to the regular quiz card -->

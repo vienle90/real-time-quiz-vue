@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import axios from 'axios';
-import Pusher from 'pusher-js';
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { leaderboardService, realtimeService } from '~/services';
+import type { LeaderboardChangedEvent } from '~/services';
 import type { QuizUser } from '~/types';
 
 interface RankMedal {
@@ -15,10 +15,6 @@ interface ScoreAnimation {
   direction: 'up' | 'down' | null;
 }
 
-interface LeaderboardChangedEvent {
-  topUsers: QuizUser[];
-}
-
 interface Props {
   quizId: string | number;
   currentUserId: string | number | null;
@@ -27,10 +23,6 @@ interface Props {
 const topUsers = ref<QuizUser[]>([]);
 const isLoading = ref<boolean>(true);
 const scoreAnimation = ref<Record<string | number, ScoreAnimation>>({});
-
-const pusher = new Pusher('ab79b520a9a82017626a', {
-  cluster: 'ap1'
-});
 
 const props = withDefaults(defineProps<Props>(), {
   currentUserId: null
@@ -73,9 +65,7 @@ function animateScoreChange(userId: number | string, newScore: number, oldScore:
 
 onMounted(async () => {
   try {
-    const leaderboardUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${props.quizId}/leaderboard`;
-    const response = await axios.get<QuizUser[]>(leaderboardUrl);
-    topUsers.value = response.data;
+    topUsers.value = await leaderboardService.getLeaderboard(props.quizId);
     
     // Initialize score animation state for each user
     topUsers.value.forEach(user => {
@@ -91,7 +81,7 @@ onMounted(async () => {
   }
 
   // Subscribe to real-time updates
-  const channel = pusher.subscribe(`quiz.${props.quizId}`);
+  const channel = realtimeService.subscribeToQuiz(props.quizId);
   
   channel.bind('leaderboard.changed', function (data: LeaderboardChangedEvent) {
     // Store old scores to detect changes
@@ -108,6 +98,13 @@ onMounted(async () => {
       animateScoreChange(user.id, user.score, oldScores[user.id]);
     });
   });
+});
+
+// Clean up when component is unmounted
+onUnmounted(() => {
+  if (props.quizId) {
+    realtimeService.unsubscribeFromQuiz(props.quizId);
+  }
 });
 </script>
 

@@ -25,7 +25,7 @@ const scrollToQuizzes = () => {
       </router-link>
     </v-app-bar-title>
 
-    <v-spacer></v-spacer>
+    <v-spacer/>
 
     <!-- Navigation links with hover effect -->
     <div class="d-none d-md-flex">
@@ -61,7 +61,7 @@ const scrollToQuizzes = () => {
     <v-app-bar-nav-icon
       class="d-flex d-md-none"
       @click.stop="$emit('toggle-drawer')"
-    ></v-app-bar-nav-icon>
+    />
 
     <!-- Action button -->
     <v-btn
@@ -75,7 +75,7 @@ const scrollToQuizzes = () => {
   </v-app-bar>
 
   <!-- Mobile navigation drawer -->
-  <slot name="navigation-drawer"></slot>
+  <slot name="navigation-drawer"/>
 </template>
 
 <style scoped lang="sass">

@@ -1,43 +1,44 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
 import QuizLeaderboard from "~/components/QuizLeaderboard.vue";
 import QuizQuestion from "~/components/QuizQuestion.vue";
+import type { Quiz, QuizUser, User } from '~/types';
 
 const route = useRoute();
 const router = useRouter();
 
-const quiz = ref({});
-const quizUser = ref({});
-const dialog = ref(false);
-const username = ref('');
-const quizSlug = route.params.slug; // Changed from quizId to quizSlug
-const quizId = ref(null); // Add quizId ref to store the numeric ID
-const currentUser = ref({});
-const isLoading = ref(true);
-const errorDialog = ref(false);
-const errorMessage = ref('');
+const quiz = ref<Partial<Quiz>>({});
+const quizUser = ref<Partial<QuizUser>>({});
+const dialog = ref<boolean>(false);
+const username = ref<string>('');
+const quizSlug = route.params.slug as string; // Changed from quizId to quizSlug
+const quizId = ref<number | string | null>(null); // Add quizId ref to store the numeric ID
+const currentUser = ref<Partial<User>>({});
+const isLoading = ref<boolean>(true);
+const errorDialog = ref<boolean>(false);
+const errorMessage = ref<string>('');
 
 // For animation
-const showContent = ref(false);
+const showContent = ref<boolean>(false);
 
 // Form validation
 const usernameRules = [
-  v => !!v || 'Username is required',
-  v => (v && v.length >= 3) || 'Username must be at least 3 characters',
+  (v: string) => !!v || 'Username is required',
+  (v: string) => (v && v.length >= 3) || 'Username must be at least 3 characters',
 ];
-const formValid = ref(false);
-const isSubmitting = ref(false);
+const formValid = ref<boolean>(false);
+const isSubmitting = ref<boolean>(false);
 
 // fetchQuizDetails is now defined below
 
-function createUser() {
+function createUser(): void {
   if (!formValid.value || isSubmitting.value) return;
   
   isSubmitting.value = true;
   
-  const createUserUrl = import.meta.env.VITE_API_URL + '/api/users';
-  axios.post(createUserUrl, {username: username.value})
+  const createUserUrl = `${import.meta.env.VITE_API_URL}/api/users`;
+  axios.post<User>(createUserUrl, {username: username.value})
     .then((response) => {
       localStorage.user = JSON.stringify(response.data);
       currentUser.value = response.data;
@@ -59,7 +60,7 @@ function createUser() {
     });
 }
 
-function joinQuiz() {
+function joinQuiz(): void {
   // Check if quizId is available
   if (!quizId.value) {
     console.error('Cannot join quiz: quizId is not available');
@@ -67,8 +68,8 @@ function joinQuiz() {
   }
   
   // Use quizId.value instead of quizSlug for joining quiz
-  const joinQuizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId.value + '/users';
-  axios.post(joinQuizUrl, {user_id: currentUser.value.id})
+  const joinQuizUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${quizId.value}/users`;
+  axios.post<QuizUser>(joinQuizUrl, {user_id: currentUser.value.id})
     .then((response) => {
       quizUser.value = response.data;
     })
@@ -84,13 +85,13 @@ function joinQuiz() {
     });
 }
 
-function closeErrorDialog() {
+function closeErrorDialog(): void {
   errorDialog.value = false;
   // Redirect to the homepage
   router.push('/');
 }
 
-function getQuizUser() {
+function getQuizUser(): void {
   // Check if quizId is available
   if (!quizId.value) {
     console.error('Cannot get quiz user: quizId is not available');
@@ -98,35 +99,37 @@ function getQuizUser() {
   }
   
   // Use quizId.value instead of quizSlug for getting quiz user
-  const getQuizUserUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId.value + '/users/' + currentUser.value.id;
-  axios.get(getQuizUserUrl).then((response) => {
+  const getQuizUserUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${quizId.value}/users/${currentUser.value.id}`;
+  axios.get<QuizUser>(getQuizUserUrl).then((response) => {
     quizUser.value = response.data;
   }).catch(() => {
     joinQuiz();
   });
 }
 
-function updateScore(score) {
-  quizUser.value.score += score;
+function updateScore(score: number): void {
+  if (quizUser.value.score !== undefined) {
+    quizUser.value.score += score;
+  }
 }
 
 // Get difficulty color
-const difficultyColor = computed(() => {
+const difficultyColor = computed((): string => {
   if (!quiz.value.difficulty) return 'primary';
   
   return quiz.value.difficulty.color || 'primary';
 });
 
 // Get difficulty label
-const difficultyLabel = computed(() => {
+const difficultyLabel = computed((): string => {
   if (!quiz.value.difficulty) return 'Medium';
   
   return quiz.value.difficulty.label || 'Medium';
 });
 
 // Random color for the quiz background
-const quizBgGradient = computed(() => {
-  const gradients = [
+const quizBgGradient = computed((): string => {
+  const gradients: string[] = [
     'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     'linear-gradient(135deg, #6a11cb 0%, #2575fc 100%)',
     'linear-gradient(135deg, #f83600 0%, #f9d423 100%)',
@@ -134,7 +137,8 @@ const quizBgGradient = computed(() => {
     'linear-gradient(135deg, #00c6fb 0%, #005bea 100%)'
   ];
   
-  return gradients[Math.floor(Math.random() * gradients.length)];
+  const index = Math.floor(Math.random() * gradients.length);
+  return gradients[index];
 });
 
 onMounted(() => {
@@ -157,11 +161,11 @@ onMounted(() => {
 });
 
 // Update fetchQuizDetails to return a promise so we can chain operations after it
-function fetchQuizDetails() {
+function fetchQuizDetails(): Promise<any> {
   // Updated to use slug-based endpoint
-  const quizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizSlug;
+  const quizUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${quizSlug}`;
   
-  return axios.get(quizUrl)
+  return axios.get<Quiz>(quizUrl)
     .then((response) => {
       quiz.value = response.data;
       quizId.value = response.data.id; // Store the numeric ID for child components
@@ -230,21 +234,21 @@ function fetchQuizDetails() {
                 
                 <div class="d-flex flex-wrap gap-3">
                   <v-chip size="large" color="white" variant="elevated" class="font-weight-medium">
-                    <v-icon start icon="mdi-help-circle" color="primary"></v-icon>
+                    <v-icon start icon="mdi-help-circle" color="primary"/>
                     <span class="text-primary">{{ quiz.questions_count || '10' }} Questions</span>
                   </v-chip>
                   
                   <v-chip size="large" color="white" variant="elevated" class="font-weight-medium">
-                    <v-icon start icon="mdi-account-group" color="primary"></v-icon>
+                    <v-icon start icon="mdi-account-group" color="primary"/>
                     <span class="text-primary">{{ quiz.participants_count || '25' }} Participants</span>
                   </v-chip>
                 </div>
               </v-col>
               
               <v-col cols="12" md="4">
-                <v-card class="score-card elevation-10 rounded-xl" v-if="currentUser.id !== undefined">
+                <v-card v-if="currentUser.id !== undefined" class="score-card elevation-10 rounded-xl">
                   <v-card-item class="pb-0">
-                    <template v-slot:prepend>
+                    <template #prepend>
                       <v-avatar color="primary" size="60">
                         <span class="text-h5 text-white">{{ currentUser.username?.charAt(0).toUpperCase() }}</span>
                       </v-avatar>
@@ -276,13 +280,13 @@ function fetchQuizDetails() {
         <v-row v-if="showContent">
           <QuizQuestion 
             v-if="currentUser.id !== undefined && quizId" 
-            @score-changed="updateScore" 
             :quiz-id="quizId" 
-            :user-id="currentUser.id"
+            :user-id="currentUser.id" 
+            @score-changed="updateScore"
           />
           <QuizLeaderboard 
-            :quiz-id="quizId" 
-            :current-user-id="currentUser.id"
+            :quiz-id="quizId !== null ? quizId : ''" 
+            :current-user-id="currentUser.id !== undefined ? currentUser.id : null"
           />
         </v-row>
       </v-fade-transition>
@@ -297,9 +301,9 @@ function fetchQuizDetails() {
     >
       <v-card class="rounded-xl">
         <v-card-item class="pb-0">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-avatar color="primary" size="48">
-              <v-icon icon="mdi-account" color="white"></v-icon>
+              <v-icon icon="mdi-account" color="white"/>
             </v-avatar>
           </template>
           
@@ -333,7 +337,7 @@ function fetchQuizDetails() {
               :loading="isSubmitting"
               :disabled="!formValid || isSubmitting"
             >
-              <v-icon start icon="mdi-login"></v-icon>
+              <v-icon start icon="mdi-login"/>
               {{ isSubmitting ? 'Joining...' : 'Join Quiz' }}
             </v-btn>
           </v-form>
@@ -349,7 +353,7 @@ function fetchQuizDetails() {
     >
       <v-card class="rounded-lg">
         <v-card-item class="bg-error text-white">
-          <template v-slot:prepend>
+          <template #prepend>
             <v-avatar color="white" class="text-error">
               <v-icon>mdi-alert-circle</v-icon>
             </v-avatar>
@@ -362,7 +366,7 @@ function fetchQuizDetails() {
         </v-card-text>
         
         <v-card-actions>
-          <v-spacer></v-spacer>
+          <v-spacer/>
           <v-btn
             color="primary"
             variant="tonal"

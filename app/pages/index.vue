@@ -1,19 +1,26 @@
-<script setup>
-import { ref, onMounted, watch } from 'vue';
+<script setup lang="ts">
+import { ref, onMounted, watch, h } from 'vue';
 import axios from 'axios';
 import QuizCard from '~/components/QuizCard.vue';
 import FeaturedQuizzes from '~/components/FeaturedQuizzes.vue';
 import CategoryFilter from '~/components/CategoryFilter.vue';
+import type { Quiz, Category } from '~/types';
 
-const quizzes = ref([]);
-const isLoading = ref(true);
-const difficultyLevels = ref([]);
-const selectedDifficulty = ref(null);
-const selectedCategoryId = ref(null);
-const resetCategoryFilter = ref(false);
+interface DifficultyLevel {
+  label: string;
+  value: string;
+  color: string;
+}
+
+const quizzes = ref<Quiz[]>([]);
+const isLoading = ref<boolean>(true);
+const difficultyLevels = ref<DifficultyLevel[]>([]);
+const selectedDifficulty = ref<string | null>(null);
+const selectedCategoryId = ref<Category | null>(null);
+const resetCategoryFilter = ref<boolean>(false);
 
 // Get all quizzes
-async function fetchQuizzes() {
+async function fetchQuizzes(): Promise<void> {
   isLoading.value = true;
   try {
     // Build query parameters
@@ -26,7 +33,7 @@ async function fetchQuizzes() {
     
     // Add category filter if present
     if (selectedCategoryId.value) {
-      params.append('category_id', selectedCategoryId.value.id);
+      params.append('category_id', selectedCategoryId.value.id.toString());
     }
     
     // Construct URL
@@ -36,7 +43,7 @@ async function fetchQuizzes() {
       : `${import.meta.env.VITE_API_URL}/api/quizzes`;
     
     console.log('Fetching quizzes from:', url);
-    const response = await axios.get(url);
+    const response = await axios.get<Quiz[]>(url);
     quizzes.value = response.data;
   } catch (error) {
     console.error('Error fetching quizzes:', error);
@@ -46,33 +53,29 @@ async function fetchQuizzes() {
 }
 
 // Get difficulty levels for filtering
-async function fetchDifficultyLevels() {
+async function fetchDifficultyLevels(): Promise<void> {
   try {
-    const response = await axios.get(import.meta.env.VITE_API_URL + '/api/quiz-difficulty-levels');
+    const response = await axios.get<DifficultyLevel[]>(`${import.meta.env.VITE_API_URL}/api/quiz-difficulty-levels`);
+    difficultyLevels.value = response.data;
   } catch (error) {
     console.error('Error fetching difficulty levels:', error);
   }
 }
 
 // Reset all filters
-function resetFilters() {
+function resetFilters(): void {
   selectedDifficulty.value = null;
   selectedCategoryId.value = null;
   
   // Force reset of the category filter component
   localStorage.removeItem('selectedCategory');
-  resetCategoryFilter.value = true;
-  
-  // Reset the flag after a short delay to allow for future resets
-  setTimeout(() => {
-    resetCategoryFilter.value = false;
-  }, 100);
+  resetCategoryFilter.value = !resetCategoryFilter.value; // Just toggle it instead of true/false
   
   fetchQuizzes();
 }
 
 // Handle category filter change
-function onCategoryChange(category) {
+function onCategoryChange(category: Category | null): void {
   console.log('Category changed to:', category);
   selectedCategoryId.value = category;
   fetchQuizzes();
@@ -96,7 +99,7 @@ onMounted(() => {
       <featured-quizzes />
       
       <!-- Divider between sections -->
-      <v-divider class="my-8"></v-divider>
+      <v-divider class="my-8"/>
       
       <!-- All Quizzes Section -->
       <v-row class="mt-8 mb-4">
@@ -121,9 +124,9 @@ onMounted(() => {
           <!-- Category Filter -->
           <div class="flex-1">
             <category-filter 
-              @filter-change="onCategoryChange" 
+              :key="`filter-${resetCategoryFilter}`" 
               :reset="resetCategoryFilter"
-              :key="resetCategoryFilter"
+              @filter-change="onCategoryChange"
             />
           </div>
           
@@ -132,31 +135,14 @@ onMounted(() => {
             <v-select
               v-model="selectedDifficulty"
               :items="difficultyLevels"
-              item-title="label"
-              item-value="value"
               variant="outlined"
               density="comfortable"
               clearable
               hide-details
-              :item-props="item => ({
-                prependAvatar: undefined,
-                prependIcon: undefined,
-                subtitle: undefined,
-                title: item.label,
-                value: item.value,
-                props: {
-                  prepend: () => {
-                    return h('v-icon', {
-                      icon: 'mdi-circle',
-                      color: item.color,
-                      size: 'x-small',
-                      class: 'me-2'
-                    })
-                  }
-                }
-              })"
+              item-title="label"
+              item-value="value"
             >
-              <template v-slot:prepend-inner>
+              <template #prepend-inner>
                 <v-icon icon="mdi-filter-variant" class="mr-2" />
               </template>
             </v-select>
@@ -172,7 +158,7 @@ onMounted(() => {
           indeterminate
           color="primary"
           size="64"
-        ></v-progress-circular>
+        />
       </div>
 
       <!-- Quiz Cards -->
@@ -201,7 +187,7 @@ onMounted(() => {
           size="64"
           color="grey-lighten-1"
           class="mb-4"
-        ></v-icon>
+        />
         
         <h3 class="text-h5 font-weight-bold mb-2">No Quizzes Found</h3>
         
@@ -213,8 +199,8 @@ onMounted(() => {
         <v-btn
           color="primary"
           variant="tonal"
-          @click="resetFilters"
           class="clear-filters-btn"
+          @click="resetFilters"
         >
           <v-icon left class="mr-2">mdi-refresh</v-icon>
           CLEAR FILTERS

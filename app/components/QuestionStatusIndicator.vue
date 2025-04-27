@@ -1,33 +1,29 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
+import type { Question , QuestionResult } from '~/types';
 
-const props = defineProps({
-  questions: {
-    type: Array,
-    required: true
-  },
-  result: {
-    type: Object,
-    required: true
-  },
-  currentQuestionIndex: {
-    type: Number,
-    required: true
-  }
-});
+interface Props {
+  questions: Question[];
+  result: QuestionResult;
+  currentQuestionIndex: number;
+}
 
-const emit = defineEmits(['navigateToQuestion']);
+const props = defineProps<Props>();
+
+const emit = defineEmits<{
+  (e: 'navigateToQuestion', index: number): void;
+}>();
 
 // Function to get the status class for a question
-const getStatusClass = (question, index) => {
+const getStatusClass = (question: Question, index: number): string => {
   // If this is the current question, add the current class
   if (index === props.currentQuestionIndex) {
     return 'current';
   }
   
   // If the question has been answered
-  if (props.result[question.id]) {
-    return props.result[question.id].isCorrect ? 'correct' : 'incorrect';
+  if (question.id !== undefined && props.result[question.id] !== undefined) {
+    return props.result[question.id]?.isCorrect ? 'correct' : 'incorrect';
   }
   
   // Unanswered question
@@ -35,12 +31,12 @@ const getStatusClass = (question, index) => {
 };
 
 // Function to navigate to a specific question
-const navigateToQuestion = (index) => {
+const navigateToQuestion = (index: number): void => {
   emit('navigateToQuestion', index);
 };
 
 // Computed property to determine if we need horizontal scrolling
-const needsScrolling = computed(() => {
+const needsScrolling = computed((): boolean => {
   return props.questions.length > 10;
 });
 </script>
@@ -56,13 +52,13 @@ const needsScrolling = computed(() => {
         v-for="(question, index) in questions" 
         :key="index"
         :class="['question-indicator', getStatusClass(question, index)]"
-        @click="navigateToQuestion(index)"
         :title="`Question ${index + 1} - ${getStatusClass(question, index) === 'correct' ? 'Correct' : 
                  getStatusClass(question, index) === 'incorrect' ? 'Incorrect' : 
                  getStatusClass(question, index) === 'current' ? 'Current' : 'Not answered yet'}`"
         role="button"
         :aria-label="`Go to question ${index + 1}`"
         :aria-current="index === currentQuestionIndex ? 'true' : 'false'"
+        @click="navigateToQuestion(index)"
       >
         <span>{{ index + 1 }}</span>
       </div>

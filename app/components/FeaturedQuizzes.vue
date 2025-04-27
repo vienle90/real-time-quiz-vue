@@ -1,19 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import QuizCard from '~/components/QuizCard.vue';
+import type { Quiz } from '~/types';
 
-const featuredQuizzes = ref([]);
-const isLoading = ref(true);
-const error = ref(null);
+const featuredQuizzes = ref<Quiz[]>([]);
+const isLoading = ref<boolean>(true);
+const error = ref<string | null>(null);
 
 // Fetch featured quizzes from the API
-async function fetchFeaturedQuizzes() {
+async function fetchFeaturedQuizzes(): Promise<void> {
   isLoading.value = true;
   error.value = null;
   
   try {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/quizzes/featured`);
+    const response = await axios.get<Quiz[]>(`${import.meta.env.VITE_API_URL}/api/quizzes/featured`);
     featuredQuizzes.value = response.data;
   } catch (err) {
     console.error('Error fetching featured quizzes:', err);
@@ -34,7 +35,7 @@ onMounted(() => {
     <v-row class="mb-4 align-center">
       <v-col>
         <div class="d-flex align-center">
-          <v-icon icon="mdi-star" color="amber-darken-2" class="me-2" size="x-large"></v-icon>
+          <v-icon icon="mdi-star" color="amber-darken-2" class="me-2" size="x-large"/>
           <h2 class="text-h4 font-weight-bold mb-0">Featured Quizzes</h2>
         </div>
         <p class="text-subtitle-1 text-medium-emphasis mt-1">
@@ -45,7 +46,7 @@ onMounted(() => {
 
     <!-- Loading State -->
     <div v-if="isLoading" class="d-flex justify-center align-center py-4">
-      <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
+      <v-progress-circular indeterminate color="primary" size="48"/>
     </div>
 
     <!-- Error State -->
@@ -98,7 +99,7 @@ onMounted(() => {
         size="64"
         color="grey-lighten-1"
         class="mb-4"
-      ></v-icon>
+      />
       
       <h3 class="text-h5 font-weight-bold mb-2">No Featured Quizzes</h3>
       

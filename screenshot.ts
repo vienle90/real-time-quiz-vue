@@ -1,4 +1,4 @@
-// screenshot.js
+// screenshot.ts
 import puppeteer from 'puppeteer-core';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,14 +8,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Helper function to wait
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const wait = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
-async function takeScreenshot() {
+async function takeScreenshot(): Promise<void> {
   console.log('Launching browser...');
   
   // Launch the browser with path to Chrome
   const browser = await puppeteer.launch({
-    headless: "new", // Use the new headless mode
+    headless: true, // Use the new headless mode
     executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     defaultViewport: {
       width: 1280,

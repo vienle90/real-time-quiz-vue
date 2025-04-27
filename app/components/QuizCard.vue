@@ -1,10 +1,11 @@
-<script setup>
-defineProps({
-  quiz: {
-    type: Object,
-    required: true
-  }
-});
+<script setup lang="ts">
+import type { Quiz } from '~/types';
+
+interface Props {
+  quiz: Quiz;
+}
+
+defineProps<Props>();
 </script>
 
 <template>
@@ -49,7 +50,7 @@ defineProps({
       <v-row align="center" no-gutters>
         <v-col>
           <div class="d-flex align-center">
-            <v-icon icon="mdi-help-circle-outline" size="small" color="primary" class="me-1"></v-icon>
+            <v-icon icon="mdi-help-circle-outline" size="small" color="primary" class="me-1"/>
             <span class="text-body-2">{{ quiz.questions_count || '10' }} Questions</span>
           </div>
         </v-col>

@@ -1,10 +1,11 @@
 import axios from 'axios';
+import type { AxiosInstance } from 'axios';
 
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig();
   
   // Create a custom axios instance
-  const api = axios.create({
+  const api: AxiosInstance = axios.create({
     baseURL: config.public.apiBaseUrl || 'http://localhost:8000',
     headers: {
       'Content-Type': 'application/json',
@@ -15,8 +16,8 @@ export default defineNuxtPlugin((nuxtApp) => {
   // Make axios available in the app
   return {
     provide: {
-      axios: axios,
-      api: api
+      axios,
+      api
     }
   };
 });

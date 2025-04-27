@@ -1,57 +1,62 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
+import type { AxiosResponse } from 'axios';
 import QuestionStatusIndicator from './QuestionStatusIndicator.vue';
+import type { Question, QuestionResult } from '~/types';
 
-// Props
-const props = defineProps({
-  quizId: {
-    type: [String, Number],
-    required: true
-  },
-  userId: {
-    type: [String, Number],
-    required: true
-  }
-});
+interface Props {
+  quizId: string | number;
+  userId: string | number;
+}
 
-const questions = ref([]);
-const answers = ref({});
-const result = ref({});
-const isLoading = ref(true);
-const currentQuestionIndex = ref(0);
+const props = defineProps<Props>();
 
-const emit = defineEmits(['scoreChanged']);
+const questions = ref<Question[]>([]);
+const answers = ref<Record<string, any>>({});
+const result = ref<QuestionResult>({});
+const isLoading = ref<boolean>(true);
+const currentQuestionIndex = ref<number>(0);
+
+interface SubmitAnswerResponse {
+  choice_id: number;
+  is_correct: boolean;
+  score: number;
+}
+
+const emit = defineEmits<{
+  (e: 'scoreChanged', score: number): void;
+}>();
 
 // For animation
-const questionTransition = ref(true);
+const questionTransition = ref<boolean>(true);
 
 // Get the current question
-const currentQuestion = computed(() => {
+const currentQuestion = computed((): Question | null => {
   return questions.value[currentQuestionIndex.value] || null;
 });
 
 // Calculate progress percentage
-const progressPercentage = computed(() => {
+const progressPercentage = computed((): number => {
   if (!questions.value.length) return 0;
   return (Object.keys(result.value).length / questions.value.length) * 100;
 });
 
 // Check if a question has been answered
-const isQuestionAnswered = (questionId) => {
+const isQuestionAnswered = (questionId: number | string): boolean => {
   return result.value[questionId] !== undefined;
 };
 
 // Get the number of answered questions
-const answeredCount = computed(() => {
+const answeredCount = computed((): number => {
   return Object.keys(result.value).length;
 });
 
 // Get the number of correct answers
-const correctCount = computed(() => {
+const correctCount = computed((): number => {
   let count = 0;
   for (const questionId in result.value) {
-    if (result.value[questionId].isCorrect) {
+    if (result.value[questionId]?.isCorrect) {
       count++;
     }
   }
@@ -59,23 +64,23 @@ const correctCount = computed(() => {
 });
 
 // Submit answer for a question
-function submitAnswers(questionId, choiceId) {
+function submitAnswers(questionId: number | string, choiceId: number): void {
   if (result.value[questionId] !== undefined) {
     return;
   }
   
-  const submitAnswersUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + props.quizId + '/questions/' + questionId + '/answers';
+  const submitAnswersUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${props.quizId}/questions/${questionId}/answers`;
   
-  axios.post(submitAnswersUrl, {
+  axios.post<SubmitAnswerResponse>(submitAnswersUrl, {
     choice_id: choiceId,
     user_id: props.userId
-  }).then((response) => {
-    const choiceId = response.data.choice_id;
+  }).then((response: AxiosResponse<SubmitAnswerResponse>) => {
+    const responseChoiceId = response.data.choice_id;
     const isCorrect = response.data.is_correct;
     
     // Update results
     result.value[questionId] = {
-      choiceId: choiceId, 
+      choiceId: responseChoiceId, 
       isCorrect: isCorrect
     };
     
@@ -94,7 +99,7 @@ function submitAnswers(questionId, choiceId) {
 }
 
 // Navigation functions
-function goToNextQuestion() {
+function goToNextQuestion(): void {
   if (currentQuestionIndex.value < questions.value.length - 1) {
     questionTransition.value = false;
     setTimeout(() => {
@@ -104,7 +109,7 @@ function goToNextQuestion() {
   }
 }
 
-function goToPreviousQuestion() {
+function goToPreviousQuestion(): void {
   if (currentQuestionIndex.value > 0) {
     questionTransition.value = false;
     setTimeout(() => {
@@ -115,7 +120,7 @@ function goToPreviousQuestion() {
 }
 
 // Navigate to a specific question when clicking on a question indicator
-function navigateToQuestion(index) {
+function navigateToQuestion(index: number): void {
   if (index !== currentQuestionIndex.value) {
     questionTransition.value = false;
     setTimeout(() => {
@@ -126,7 +131,7 @@ function navigateToQuestion(index) {
 }
 
 // Get class for choice
-function getChoiceClass(questionId, choiceId) {
+function getChoiceClass(questionId: number | string, choiceId: number): string {
   if (!result.value[questionId]) return '';
   
   const isSelected = result.value[questionId].choiceId === choiceId;
@@ -139,14 +144,14 @@ function getChoiceClass(questionId, choiceId) {
 }
 
 // Load questions from API
-onMounted(async () => {
+onMounted(async (): Promise<void> => {
   try {
-    const getQuestionUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + props.quizId + '/questions';
-    const response = await axios.get(getQuestionUrl);
+    const getQuestionUrl = `${import.meta.env.VITE_API_URL}/api/quizzes/${props.quizId}/questions`;
+    const response = await axios.get<Question[]>(getQuestionUrl);
     questions.value = response.data;
     
     // Load saved results from localStorage
-    const resultKey = 'result.' + props.quizId + 'user.' + props.userId;
+    const resultKey = `result.${props.quizId}user.${props.userId}`;
     const localStorageResult = localStorage.getItem(resultKey);
     
     if (localStorageResult !== null) {
@@ -155,7 +160,8 @@ onMounted(async () => {
       // If user has already answered some questions, start at the first unanswered one
       if (Object.keys(result.value).length > 0 && Object.keys(result.value).length < questions.value.length) {
         for (let i = 0; i < questions.value.length; i++) {
-          if (!result.value[questions.value[i].id]) {
+          const questionId = questions.value[i]?.id;
+          if (questionId !== undefined && !result.value[questionId]) {
             currentQuestionIndex.value = i;
             break;
           }
@@ -170,10 +176,10 @@ onMounted(async () => {
 });
 
 // Save results to localStorage when they change
-watch(result.value, (newResult) => {
-  const key = 'result.' + props.quizId + 'user.' + props.userId;
+watch(() => result.value, (newResult: QuestionResult) => {
+  const key = `result.${props.quizId}user.${props.userId}`;
   localStorage.setItem(key, JSON.stringify(newResult));
-});
+}, { deep: true });
 </script>
 
 <template>
@@ -186,7 +192,7 @@ watch(result.value, (newResult) => {
           width="5"
           color="primary"
           indeterminate
-        ></v-progress-circular>
+        />
       </div>
       
       <template v-else>
@@ -199,18 +205,18 @@ watch(result.value, (newResult) => {
             
             <div class="progress-stats d-flex align-center">
               <v-tooltip location="bottom" text="Correct answers">
-                <template v-slot:activator="{ props }">
+                <template #activator="{ props }">
                   <div class="d-flex align-center me-3" v-bind="props">
-                    <v-icon icon="mdi-check-circle" color="success" class="me-1"></v-icon>
+                    <v-icon icon="mdi-check-circle" color="success" class="me-1"/>
                     <span>{{ correctCount }}</span>
                   </div>
                 </template>
               </v-tooltip>
               
               <v-tooltip location="bottom" text="Progress">
-                <template v-slot:activator="{ props }">
+                <template #activator="{ props }">
                   <div class="d-flex align-center" v-bind="props">
-                    <v-icon icon="mdi-progress-check" color="info" class="me-1"></v-icon>
+                    <v-icon icon="mdi-progress-check" color="info" class="me-1"/>
                     <span>{{ answeredCount }}/{{ questions.length }}</span>
                   </div>
                 </template>
@@ -224,7 +230,7 @@ watch(result.value, (newResult) => {
             color="primary"
             rounded
             class="mb-4"
-          ></v-progress-linear>
+          />
         </v-card-item>
         
         <!-- Question Status Indicator -->
@@ -251,7 +257,7 @@ watch(result.value, (newResult) => {
                     {{ question.question }}
                   </h2>
                   
-                  <v-divider class="mb-6"></v-divider>
+                  <v-divider class="mb-6"/>
                   
                   <!-- Answer Choices -->
                   <div class="choices-container">
@@ -264,26 +270,26 @@ watch(result.value, (newResult) => {
                           isHovering && !isQuestionAnswered(question.id) ? 'choice-hover' : '',
                           isQuestionAnswered(question.id) ? 'choice-answered' : ''
                         ]"
-                        @click="!isQuestionAnswered(question.id) && submitAnswers(question.id, choice.id)"
                         :disabled="isQuestionAnswered(question.id)"
                         variant="outlined"
                         :ripple="!isQuestionAnswered(question.id)"
+                        @click="!isQuestionAnswered(question.id) && submitAnswers(question.id, choice.id)"
                       >
                         <div class="d-flex align-center">
                           <div class="choice-indicator me-4">
                             <v-icon
-                              v-if="isQuestionAnswered(question.id) && result[question.id].choiceId === choice.id && result[question.id].isCorrect"
+                              v-if="isQuestionAnswered(question.id) && result[question.id]?.choiceId === choice.id && result[question.id]?.isCorrect"
                               icon="mdi-check-circle"
                               color="success"
                               size="large"
-                            ></v-icon>
+                            />
                             
                             <v-icon
-                              v-else-if="isQuestionAnswered(question.id) && result[question.id].choiceId === choice.id && !result[question.id].isCorrect"
+                              v-else-if="isQuestionAnswered(question.id) && result[question.id]?.choiceId === choice.id && !result[question.id]?.isCorrect"
                               icon="mdi-close-circle"
                               color="error"
                               size="large"
-                            ></v-icon>
+                            />
                             
                             <div v-else class="choice-letter">
                               {{ String.fromCharCode(65 + question.choices.indexOf(choice)) }}
@@ -309,20 +315,20 @@ watch(result.value, (newResult) => {
             color="secondary"
             variant="text"
             :disabled="currentQuestionIndex === 0"
-            @click="goToPreviousQuestion"
             prepend-icon="mdi-arrow-left"
+            @click="goToPreviousQuestion"
           >
             Previous
           </v-btn>
           
-          <v-spacer></v-spacer>
+          <v-spacer/>
           
           <v-btn
             color="primary"
             variant="text"
             :disabled="currentQuestionIndex === questions.length - 1"
-            @click="goToNextQuestion"
             append-icon="mdi-arrow-right"
+            @click="goToNextQuestion"
           >
             Next
           </v-btn>

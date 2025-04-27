@@ -23,24 +23,24 @@ const toggleDrawer = () => {
               prepend-icon="mdi-view-dashboard"
               title="Explore Quizzes"
               to="/"
-            ></v-list-item>
+            />
             <v-list-item
               prepend-icon="mdi-trophy"
               title="Leaderboard"
               to="/"
-            ></v-list-item>
+            />
             <v-list-item
               prepend-icon="mdi-account"
               title="Profile"
               to="/"
-            ></v-list-item>
-            <v-divider class="my-2"></v-divider>
+            />
+            <v-divider class="my-2"/>
             <v-list-item
               prepend-icon="mdi-play-circle"
               title="Start Quiz"
               to="/"
               color="primary"
-            ></v-list-item>
+            />
           </v-list>
         </v-navigation-drawer>
       </template>

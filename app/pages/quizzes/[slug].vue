@@ -29,22 +29,7 @@ const usernameRules = [
 const formValid = ref(false);
 const isSubmitting = ref(false);
 
-// Get quiz details
-function fetchQuizDetails() {
-  // Updated to use slug-based endpoint
-  const quizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizSlug;
-  axios.get(quizUrl).then((response) => {
-    quiz.value = response.data;
-    quizId.value = response.data.id; // Store the numeric ID for child components
-    setTimeout(() => {
-      showContent.value = true;
-      isLoading.value = false;
-    }, 300);
-  }).catch((error) => {
-    console.error('Error fetching quiz details:', error);
-    isLoading.value = false;
-  });
-}
+// fetchQuizDetails is now defined below
 
 function createUser() {
   if (!formValid.value || isSubmitting.value) return;
@@ -56,7 +41,12 @@ function createUser() {
     .then((response) => {
       localStorage.user = JSON.stringify(response.data);
       currentUser.value = response.data;
-      joinQuiz();
+      
+      // Only join quiz if quizId is available
+      if (quizId.value) {
+        joinQuiz();
+      }
+      
       dialog.value = false;
     })
     .catch((error) => {
@@ -70,6 +60,12 @@ function createUser() {
 }
 
 function joinQuiz() {
+  // Check if quizId is available
+  if (!quizId.value) {
+    console.error('Cannot join quiz: quizId is not available');
+    return;
+  }
+  
   // Use quizId.value instead of quizSlug for joining quiz
   const joinQuizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId.value + '/users';
   axios.post(joinQuizUrl, {user_id: currentUser.value.id})
@@ -78,7 +74,7 @@ function joinQuiz() {
     })
     .catch((error) => {
       console.error('Error joining quiz:', error);
-      // Check if it's a 400 error
+      // Check if it's a 404 error
       if (error.response && error.response.status === 404) {
         // Extract error message or use a default
         errorMessage.value = error.response.data.message || 'User not found. Please try again.';
@@ -95,6 +91,12 @@ function closeErrorDialog() {
 }
 
 function getQuizUser() {
+  // Check if quizId is available
+  if (!quizId.value) {
+    console.error('Cannot get quiz user: quizId is not available');
+    return;
+  }
+  
   // Use quizId.value instead of quizSlug for getting quiz user
   const getQuizUserUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId.value + '/users/' + currentUser.value.id;
   axios.get(getQuizUserUrl).then((response) => {
@@ -136,17 +138,45 @@ const quizBgGradient = computed(() => {
 });
 
 onMounted(() => {
-  fetchQuizDetails();
-
   const localStorageUser = localStorage.user;
 
+  // Load user information
   if (localStorageUser === undefined) {
     dialog.value = true;
   } else {
     currentUser.value = JSON.parse(localStorageUser);
-    getQuizUser();
   }
+
+  // Fetch quiz details first
+  fetchQuizDetails().then(() => {
+    // After quiz is fetched and quizId is available, get user quiz info
+    if (currentUser.value.id && quizId.value) {
+      getQuizUser();
+    }
+  });
 });
+
+// Update fetchQuizDetails to return a promise so we can chain operations after it
+function fetchQuizDetails() {
+  // Updated to use slug-based endpoint
+  const quizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizSlug;
+  
+  return axios.get(quizUrl)
+    .then((response) => {
+      quiz.value = response.data;
+      quizId.value = response.data.id; // Store the numeric ID for child components
+      setTimeout(() => {
+        showContent.value = true;
+        isLoading.value = false;
+      }, 300);
+      return response; // Return response for chaining
+    })
+    .catch((error) => {
+      console.error('Error fetching quiz details:', error);
+      isLoading.value = false;
+      throw error; // Rethrow for proper promise chaining
+    });
+}
 </script>
 
 <template>

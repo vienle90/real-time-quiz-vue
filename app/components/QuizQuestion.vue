@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
+import QuestionStatusIndicator from './QuestionStatusIndicator.vue';
 
 // Props
 const props = defineProps({
@@ -113,6 +114,17 @@ function goToPreviousQuestion() {
   }
 }
 
+// Navigate to a specific question when clicking on a question indicator
+function navigateToQuestion(index) {
+  if (index !== currentQuestionIndex.value) {
+    questionTransition.value = false;
+    setTimeout(() => {
+      currentQuestionIndex.value = index;
+      questionTransition.value = true;
+    }, 300);
+  }
+}
+
 // Get class for choice
 function getChoiceClass(questionId, choiceId) {
   if (!result.value[questionId]) return '';
@@ -213,6 +225,16 @@ watch(result.value, (newResult) => {
             rounded
             class="mb-4"
           ></v-progress-linear>
+        </v-card-item>
+        
+        <!-- Question Status Indicator -->
+        <v-card-item class="px-4 pb-0 pt-2">
+          <QuestionStatusIndicator
+            :questions="questions"
+            :result="result"
+            :current-question-index="currentQuestionIndex"
+            @navigate-to-question="navigateToQuestion"
+          />
         </v-card-item>
         
         <!-- Question Content -->

@@ -10,7 +10,7 @@ defineProps({
 <template>
   <v-card
     class="quiz-card h-100"
-    :to="`/quizzes/${quiz.id}`"
+    :to="`/quizzes/${quiz.slug || quiz.id}`"
     hover
     variant="elevated"
     rounded="lg"

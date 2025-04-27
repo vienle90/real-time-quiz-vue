@@ -11,7 +11,8 @@ const quiz = ref({});
 const quizUser = ref({});
 const dialog = ref(false);
 const username = ref('');
-const quizId = route.params.id;
+const quizSlug = route.params.slug; // Changed from quizId to quizSlug
+const quizId = ref(null); // Add quizId ref to store the numeric ID
 const currentUser = ref({});
 const isLoading = ref(true);
 const errorDialog = ref(false);
@@ -30,9 +31,11 @@ const isSubmitting = ref(false);
 
 // Get quiz details
 function fetchQuizDetails() {
-  const quizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId;
+  // Updated to use slug-based endpoint
+  const quizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizSlug;
   axios.get(quizUrl).then((response) => {
     quiz.value = response.data;
+    quizId.value = response.data.id; // Store the numeric ID for child components
     setTimeout(() => {
       showContent.value = true;
       isLoading.value = false;
@@ -67,7 +70,8 @@ function createUser() {
 }
 
 function joinQuiz() {
-  const joinQuizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId + '/users';
+  // Use quizId.value instead of quizSlug for joining quiz
+  const joinQuizUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId.value + '/users';
   axios.post(joinQuizUrl, {user_id: currentUser.value.id})
     .then((response) => {
       quizUser.value = response.data;
@@ -91,7 +95,8 @@ function closeErrorDialog() {
 }
 
 function getQuizUser() {
-  const getQuizUserUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId + '/users/' + currentUser.value.id;
+  // Use quizId.value instead of quizSlug for getting quiz user
+  const getQuizUserUrl = import.meta.env.VITE_API_URL + '/api/quizzes/' + quizId.value + '/users/' + currentUser.value.id;
   axios.get(getQuizUserUrl).then((response) => {
     quizUser.value = response.data;
   }).catch(() => {
@@ -240,12 +245,15 @@ onMounted(() => {
       <v-fade-transition>
         <v-row v-if="showContent">
           <QuizQuestion 
-            v-if="currentUser.id !== undefined" 
+            v-if="currentUser.id !== undefined && quizId" 
             @score-changed="updateScore" 
             :quiz-id="quizId" 
             :user-id="currentUser.id"
           />
-          <QuizLeaderboard :quiz-id="quizId" :current-user-id="currentUser.id"/>
+          <QuizLeaderboard 
+            :quiz-id="quizId" 
+            :current-user-id="currentUser.id"
+          />
         </v-row>
       </v-fade-transition>
     </v-container>
